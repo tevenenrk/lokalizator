@@ -88,6 +88,7 @@ class TrackerService : Service() {
             ACTION_TORCH -> { ensureStarted(); sendAct("torch") }
             ACTION_SILENCE -> { Alarm.stop(this); cancelAlert() }
             ACTION_PUBLISH_NOW -> { ensureStarted(); publishState() }
+            ACTION_PING -> { ensureStarted(); link?.ping(); publishState() }
             else -> ensureStarted()
         }
         return START_STICKY
@@ -98,8 +99,11 @@ class TrackerService : Service() {
             this, NOTIF_ID, buildNotification(),
             if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
         )
+        AppState.serviceError.value = null
         true
     } catch (e: Exception) {
+        AppState.serviceError.value = "Nie udało się uruchomić udostępniania: ${e.javaClass.simpleName} ${e.message ?: ""}. " +
+            "Sprawdź, czy aplikacja ma zgodę na lokalizację."
         false
     }
 
@@ -451,6 +455,7 @@ class TrackerService : Service() {
         const val ACTION_TORCH = "torch"
         const val ACTION_SILENCE = "silence"
         const val ACTION_PUBLISH_NOW = "publish"
+        const val ACTION_PING = "ping"
 
         fun send(ctx: Context, action: String? = null) {
             val i = Intent(ctx, TrackerService::class.java)

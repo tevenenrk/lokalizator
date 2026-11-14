@@ -16,6 +16,9 @@ class Crypto(code: String) {
     private val norm = normalize(code)
     val topicRoot: String = "lokalizator/v1/" + hex(sha256("topic|$norm")).take(32)
 
+    /** Krótki "odcisk" kodu do porównania między telefonami (bez ujawniania kodu). */
+    val fingerprint: String = hex(sha256("fp|$norm")).take(4).uppercase()
+
     /** 4 bajty wspólne dla grupy – rozpoznawanie "swoich" telefonów przez Bluetooth. */
     val bleGroup: ByteArray = sha256("ble|$norm").copyOf(4)
 

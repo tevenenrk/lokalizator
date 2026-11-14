@@ -47,7 +47,20 @@ data class LocalSense(
 
 data class MyFix(val lat: Double, val lon: Double, val acc: Float, val ts: Long)
 
+data class Diag(
+    val sent: Int = 0,
+    val received: Int = 0,
+    val lastTx: Long = 0,
+    val lastRx: Long = 0,
+    /** wiadomości z naszego kanału, których nie dało się odszyfrować = ktoś ma INNY kod */
+    val badDecrypt: Int = 0,
+    val ping: Map<String, String> = emptyMap(),
+)
+
 object AppState {
+    val servers = MutableStateFlow<Map<String, String>>(emptyMap())
+    val diag = MutableStateFlow(Diag())
+    val serviceError = MutableStateFlow<String?>(null)
     val serviceRunning = MutableStateFlow(false)
     val connection = MutableStateFlow("rozłączony")
     val myFix = MutableStateFlow<MyFix?>(null)

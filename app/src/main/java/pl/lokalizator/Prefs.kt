@@ -21,9 +21,17 @@ class Prefs(ctx: Context) {
         get() = sp.getString("code", "") ?: ""
         set(v) = sp.edit().putString("code", v.trim().uppercase()).apply()
 
+    /** Pusty = domyślne serwery (dwa naraz). Inaczej: własny adres, np. ssl://xxx.hivemq.cloud:8883 */
     var broker: String
-        get() = sp.getString("broker", DEFAULT_BROKER) ?: DEFAULT_BROKER
+        get() = sp.getString("broker", "") ?: ""
         set(v) = sp.edit().putString("broker", v.trim()).apply()
+
+    val usesDefaultServers: Boolean get() = broker.isBlank() || broker in LEGACY_DEFAULTS
+
+    /** Lista (nazwa, adresy do wypróbowania po kolei). */
+    fun servers(): List<Pair<String, List<String>>> =
+        if (usesDefaultServers) DEFAULT_SERVERS
+        else listOf(broker.substringAfter("://").substringBefore(":").substringBefore("/") to listOf(broker))
 
     var user: String
         get() = sp.getString("user", "") ?: ""
@@ -63,11 +71,13 @@ class Prefs(ctx: Context) {
     val isConfigured: Boolean get() = code.replace("-", "").length >= 6
 
     companion object {
-        const val DEFAULT_BROKER = "ssl://broker.hivemq.com:8883"
-        val BROKERS = listOf(
-            "ssl://broker.hivemq.com:8883",
-            "ssl://broker.emqx.io:8883",
-            "ssl://test.mosquitto.org:8886",
+        val DEFAULT_SERVERS = listOf(
+            "HiveMQ" to listOf("ssl://broker.hivemq.com:8883", "wss://broker.hivemq.com:8884/mqtt"),
+            "EMQX" to listOf("ssl://broker.emqx.io:8883", "wss://broker.emqx.io:8084/mqtt"),
+        )
+        /** Adresy zapisane przez wersję 1.0 – traktujemy je jak "domyślne". */
+        val LEGACY_DEFAULTS = setOf(
+            "ssl://broker.hivemq.com:8883", "ssl://broker.emqx.io:8883", "ssl://test.mosquitto.org:8886",
         )
         private const val ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 

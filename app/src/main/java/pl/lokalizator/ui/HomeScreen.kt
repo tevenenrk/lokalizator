@@ -52,6 +52,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import pl.lokalizator.AppState
+import pl.lokalizator.Crypto
 import pl.lokalizator.FindSensors
 import pl.lokalizator.Geo
 import pl.lokalizator.Peer
@@ -161,11 +162,13 @@ fun HomeScreen(prefs: Prefs, onSettings: () -> Unit, onFind: (String) -> Unit, o
         if (peers.isEmpty()) {
             InfoCard("Czekam na drugi telefon") {
                 Text(
-                    "Zainstaluj aplikację na drugim telefonie i wpisz ten sam kod: ${prefs.code}. " +
-                        "Pojawi się tutaj, gdy tylko wyśle pierwszą pozycję."
+                    "Na drugim telefonie: ten sam kod (${prefs.code}), włączony przełącznik udostępniania i internet. " +
+                        "Pojawi się tutaj zwykle w ciągu kilku sekund od połączenia. Jeśli nie – zobacz „Diagnostyka” niżej."
                 )
             }
         }
+
+        Diagnostics(prefs, running, now, peers.size)
 
         peers.forEach { p ->
             PeerCard(p, me, local.pressure, prefs, now,
@@ -185,6 +188,49 @@ fun HomeScreen(prefs: Prefs, onSettings: () -> Unit, onFind: (String) -> Unit, o
         }
     }
 }
+
+@Composable
+private fun Diagnostics(prefs: Prefs, running: Boolean, now: Long, peersCount: Int) {
+    val ctx = LocalContext.current
+    val servers by AppState.servers.collectAsState()
+    val diag by AppState.diag.collectAsState()
+    val err by AppState.serviceError.collectAsState()
+    var open by remember { mutableStateOf(peersCount == 0) }
+    val fp = remember(prefs.code) { Crypto(prefs.code).fingerprint }
+    InfoCard("Diagnostyka połączenia") {
+        TextButton(onClick = { open = !open }) { Text(if (open) "Zwiń" else "Pokaż szczegóły") }
+        if (!open) return@InfoCard
+        Text("Odcisk kodu: $fp", fontWeight = FontWeight.Bold)
+        Text("Musi być IDENTYCZNY na obu telefonach. Jeśli jest inny – kody się różnią (np. pomylone 8/B, 5/S, 2/Z).",
+            style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(6.dp))
+        err?.let { Text(it, color = Hot) }
+        if (!running) Text("Udostępnianie jest WYŁĄCZONE – włącz przełącznik u góry.", color = Hot)
+        Text("Serwery" + if (prefs.usesDefaultServers) " (domyślne):" else " (własny – na obu telefonach musi być ten sam):",
+            fontWeight = FontWeight.SemiBold)
+        if (servers.isEmpty()) Text("—")
+        servers.forEach { (name, st) ->
+            Text("• $name: $st", style = MaterialTheme.typography.bodySmall,
+                color = if (st.startsWith("połączony")) Ok else MaterialTheme.colorScheme.onSurface)
+        }
+        Text("Wysłane wiadomości: ${diag.sent} (ostatnio ${Geo.ago(diag.lastTx, now)})", style = MaterialTheme.typography.bodySmall)
+        Text("Odebrane od innych telefonów: ${diag.received} (ostatnio ${Geo.ago(diag.lastRx, now)})", style = MaterialTheme.typography.bodySmall)
+        if (diag.badDecrypt > 0) Text("Odebrano ${diag.badDecrypt} wiadomości z innym kluczem.", color = Hot,
+            style = MaterialTheme.typography.bodySmall)
+        if (diag.ping.isNotEmpty()) {
+            Text("Test serwerów:", fontWeight = FontWeight.SemiBold)
+            diag.ping.forEach { (n, v) -> Text("• $n: $v", style = MaterialTheme.typography.bodySmall) }
+        }
+        OutlinedButton(onClick = { TrackerService.send(ctx, TrackerService.ACTION_PING) }, enabled = running) {
+            Text("Testuj połączenie")
+        }
+        Text("Twój identyfikator: ${prefs.deviceId}  •  wersja ${appVersion(ctx)}", style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+private fun appVersion(ctx: android.content.Context): String = try {
+    ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "?"
+} catch (_: Exception) { "?" }
 
 @Composable
 private fun Warn(text: String, button: String, onClick: () -> Unit) {

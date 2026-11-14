@@ -12,8 +12,18 @@ android {
         applicationId = "pl.lokalizator"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
+    }
+
+    // Stały klucz (debug) w repo: APK z GitHub Actions i lokalne instalują się jako aktualizacja.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {

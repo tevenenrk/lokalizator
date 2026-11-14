@@ -102,7 +102,9 @@ fun SetupScreen(prefs: Prefs, canCancel: Boolean, onDone: () -> Unit, onCancel: 
                 }, "Wyślij kod"))
             }) { Text("Wyślij kod") }
         }
-        Text("Na pierwszym telefonie wygeneruj kod, na drugim wpisz dokładnie ten sam.",
+        val fp = remember(code) { if (Crypto.normalize(code).length >= 6) Crypto(code).fingerprint else "—" }
+        Text("Na pierwszym telefonie wygeneruj kod, na drugim wpisz dokładnie ten sam. " +
+            "Kontrola: odcisk kodu to $fp – na obu telefonach musi wyjść identyczny.",
             style = MaterialTheme.typography.bodySmall)
 
         Spacer(Modifier.height(4.dp))
@@ -133,18 +135,16 @@ fun SetupScreen(prefs: Prefs, canCancel: Boolean, onDone: () -> Unit, onCancel: 
         }
         if (advanced) {
             Text(
-                "Telefony łączą się przez serwer MQTT. Domyślny jest darmowy i publiczny – Wasze dane są " +
-                    "zaszyfrowane, ale serwer nie daje gwarancji działania. Możesz podać własny (np. darmowe konto HiveMQ Cloud). " +
-                    "Oba telefony muszą mieć ten sam serwer.",
+                "Domyślnie telefon łączy się jednocześnie z dwoma darmowymi serwerami (HiveMQ i EMQX). " +
+                    "Dane są zaszyfrowane Waszym kodem. Własny serwer (np. darmowe konto HiveMQ Cloud) wpisz poniżej – " +
+                    "wtedy MUSI być identyczny na obu telefonach. Zostaw puste, by używać domyślnych.",
                 style = MaterialTheme.typography.bodySmall
             )
-            OutlinedTextField(broker, { broker = it }, label = { Text("Adres serwera") },
+            OutlinedTextField(broker, { broker = it }, label = { Text("Własny serwer (puste = domyślne)") },
+                placeholder = { Text("ssl://adres:8883") },
                 singleLine = true, modifier = Modifier.fillMaxWidth())
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Prefs.BROKERS.forEach { b ->
-                    FilterChip(selected = broker == b, onClick = { broker = b },
-                        label = { Text(b.substringAfter("://").substringBefore(":")) })
-                }
+            if (broker.isNotBlank()) {
+                TextButton(onClick = { broker = "" }) { Text("Przywróć domyślne serwery") }
             }
             OutlinedTextField(user, { user = it }, label = { Text("Login (opcjonalnie)") },
                 singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -164,7 +164,7 @@ fun SetupScreen(prefs: Prefs, canCancel: Boolean, onDone: () -> Unit, onCancel: 
                 prefs.intervalSec = interval
                 prefs.findMinutes = findMin
                 prefs.preciseNormal = precise
-                prefs.broker = broker.ifBlank { Prefs.DEFAULT_BROKER }
+                prefs.broker = broker
                 prefs.user = user
                 prefs.pass = pass
                 launcher.launch(MainActivity.neededPermissions())
