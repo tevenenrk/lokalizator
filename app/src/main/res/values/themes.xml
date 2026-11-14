@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Lokalizator" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#FF0E3B43</item>
+        <item name="android:navigationBarColor">#FF0E3B43</item>
+    </style>
+</resources>
